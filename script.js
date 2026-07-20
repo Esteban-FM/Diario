@@ -32,11 +32,11 @@
   };
 
   var DEFAULT_HABITS = [
-    { id: "creatina", label: "Tomar creatina", unit: "dosis", color: "violet", type: "toggle" },
+    { id: "creatina", label: "Tomar creatina", unit: "dosis 5 g", color: "violet", type: "toggle" },
     { id: "agua", label: "Beber agua", color: "indigo", type: "progress", target: 3, step: 1, unit: "L" },
     { id: "gimnasio", label: "Ir al gimnasio", color: "coral", type: "progress", target: 60, step: 15, unit: "min" },
     { id: "proteina", label: "Consumir proteína", color: "amber", type: "progress", target: 180, step: 15, unit: "g" },
-    { id: "pasos", label: "Caminar mis pasos", unit: "8,000 pasos", color: "teal", type: "toggle" }
+    { id: "pasos", label: "Caminar mis pasos", color: "teal", type: "progress", target: 8000, step: 500, unit: "pasos" }
   ];
 
   var DEFAULT_BY_ID = {};
@@ -56,8 +56,9 @@
               h.target = def.target;
               h.step = def.step;
               h.unit = def.unit;
-            } else if (!h.type) {
-              h.type = "toggle";
+            } else {
+              if (!h.type) h.type = "toggle";
+              if (def && def.unit) h.unit = def.unit;
             }
           });
           return parsed;
@@ -197,12 +198,23 @@
       row.style.setProperty("--g1", colors.g1);
       row.style.setProperty("--g2", colors.g2);
 
+      var iconWrap = document.createElement("span");
+      iconWrap.className = "habit-icon-wrap";
+
+      var ring = document.createElement("span");
+      ring.className = "habit-ring";
+      ring.style.setProperty("--ring", Math.round(ratio * 360) + "deg");
+      ring.setAttribute("aria-hidden", "true");
+
       var icon = document.createElement("span");
       icon.className = "habit-icon";
       var iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       iconSvg.setAttribute("viewBox", "0 0 24 24");
       iconSvg.innerHTML = ICONS[habit.id] || ICONS.default;
       icon.appendChild(iconSvg);
+
+      iconWrap.appendChild(ring);
+      iconWrap.appendChild(icon);
 
       var copy = document.createElement("span");
       copy.className = "habit-copy";
@@ -275,7 +287,7 @@
       });
       status.appendChild(remove);
 
-      row.appendChild(icon);
+      row.appendChild(iconWrap);
       row.appendChild(copy);
       row.appendChild(status);
 
