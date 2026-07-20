@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dosis Diaria — seguimiento de hábitos</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="sheet">
+    <header class="header">
+      <div class="header-copy">
+        <span class="eyebrow">Dosis diaria</span>
+        <h1 class="date-heading" id="date-heading"></h1>
+      </div>
+      <div class="streak">
+        <span class="streak-value" id="streak-value">0</span>
+        <span class="streak-label" id="streak-label">días seguidos</span>
+      </div>
+    </header>
+
+    <section class="habits" id="habit-list" aria-label="Metas de hoy"></section>
+
+    <button class="add-toggle" id="add-toggle" type="button">+ Agregar meta</button>
+    <form class="add-form" id="add-form">
+      <input type="text" name="label" placeholder="Nombre de la meta" autocomplete="off" required />
+      <input type="text" name="unit" placeholder="Detalle (opcional)" autocomplete="off" />
+      <button type="submit">Añadir</button>
+    </form>
+
+    <section class="history" aria-label="Historial">
+      <div class="history-head">
+        <span class="history-title">Últimos días</span>
+        <span class="history-range" id="history-range"></span>
+      </div>
+      <div class="grid-wrap">
+        <div class="grid" id="history-grid"></div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch done"></span>cumplido</span>
+        <span class="legend-item"><span class="legend-swatch"></span>no cumplido</span>
+        <span class="legend-item"><span class="legend-swatch none"></span>sin registro</span>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
