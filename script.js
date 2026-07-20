@@ -42,6 +42,32 @@
   var DEFAULT_BY_ID = {};
   DEFAULT_HABITS.forEach(function (h) { DEFAULT_BY_ID[h.id] = h; });
 
+  var WEEK_TARGET = 8;
+
+  var MUSCLES = [
+    { id: "pecho", label: "Pecho", color: "coral" },
+    { id: "biceps", label: "Bíceps", color: "indigo" },
+    { id: "triceps", label: "Tríceps", color: "amber" },
+    { id: "hombro", label: "Hombro", color: "teal" },
+    { id: "espalda", label: "Espalda", color: "violet" },
+    { id: "pierna", label: "Pierna", color: "coral" },
+    { id: "gluteo", label: "Glúteo", color: "indigo" },
+    { id: "antebrazo", label: "Antebrazo", color: "amber" },
+    { id: "trapecio", label: "Trapecio / cuello", color: "teal" }
+  ];
+
+  var MUSCLE_ICONS = {
+    pecho: '<circle cx="8.7" cy="12" r="4.6"/><circle cx="15.3" cy="12" r="4.6"/><line x1="12" y1="7" x2="12" y2="17"/>',
+    biceps: '<path d="M6 18c0-6 2-10 7-11"/><circle cx="15" cy="7" r="2.6"/>',
+    triceps: '<path d="M18 18c0-6-2-10-7-11"/><circle cx="9" cy="7" r="2.6"/>',
+    hombro: '<path d="M6 14a6 5 0 0 1 12 0"/><path d="M6 14v4M18 14v4"/>',
+    espalda: '<path d="M12 4v5M12 9L5 20M12 9l7 11"/>',
+    pierna: '<path d="M10 3l-1 9-3 9M14 3l1 7 3 11"/>',
+    gluteo: '<path d="M4 17c0-7 3.5-11 8-11s8 4 8 11"/>',
+    antebrazo: '<path d="M6 6l7 12"/><circle cx="16" cy="19" r="2.6"/>',
+    trapecio: '<path d="M8 6h8l4 12H4z"/>'
+  };
+
   function loadState() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -65,11 +91,12 @@
           DEFAULT_HABITS.forEach(function (def) {
             if (presentIds.indexOf(def.id) === -1) parsed.habits.push(Object.assign({}, def));
           });
+          if (!parsed.training) parsed.training = {};
           return parsed;
         }
       }
     } catch (e) {}
-    return { habits: DEFAULT_HABITS.slice(), completions: {} };
+    return { habits: DEFAULT_HABITS.slice(), completions: {}, training: {} };
   }
 
   var state = loadState();
@@ -94,6 +121,16 @@
 
   var TODAY = new Date();
   var TODAY_KEY = todayKey(TODAY);
+
+  function mondayOf(date) {
+    var day = date.getDay();
+    var offset = day === 0 ? -6 : 1 - day;
+    return addDays(date, offset);
+  }
+
+  var WEEK_START = mondayOf(TODAY);
+  var WEEK_KEY = todayKey(WEEK_START);
+  var WEEK_END = addDays(WEEK_START, 6);
 
   function rawValueOf(habit, entry) {
     return entry ? entry[habit.id] : undefined;
@@ -178,6 +215,15 @@
     state.completions[TODAY_KEY] = entry;
     save();
     renderAll();
+  }
+
+  function tapMuscle(muscleId) {
+    var week = state.training[WEEK_KEY] || {};
+    var current = week[muscleId] || 0;
+    week[muscleId] = current >= WEEK_TARGET ? 0 : current + 1;
+    state.training[WEEK_KEY] = week;
+    save();
+    renderTraining();
   }
 
   function removeHabit(habitId, label) {
@@ -351,10 +397,80 @@
       days[days.length - 1].toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   }
 
+  function renderTraining() {
+    var grid = document.getElementById("muscle-grid");
+    grid.innerHTML = "";
+    var week = state.training[WEEK_KEY] || {};
+
+    MUSCLES.forEach(function (muscle) {
+      var current = week[muscle.id] || 0;
+      var done = current >= WEEK_TARGET;
+      var colors = COLORS[muscle.color] || COLORS.coral;
+
+      var tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "muscle-tile" + (done ? " done" : "");
+      tile.style.setProperty("--g1", colors.g1);
+      tile.style.setProperty("--g2", colors.g2);
+      tile.setAttribute(
+        "aria-label",
+        muscle.label + ": " + current + " de " + WEEK_TARGET + " ejercicios esta semana"
+      );
+
+      var ringWrap = document.createElement("span");
+      ringWrap.className = "muscle-ring-wrap";
+
+      var ring = document.createElement("span");
+      ring.className = "muscle-ring";
+      ring.style.setProperty("--ring", Math.round((current / WEEK_TARGET) * 360) + "deg");
+      ring.setAttribute("aria-hidden", "true");
+
+      var icon = document.createElement("span");
+      icon.className = "muscle-icon";
+      var iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      iconSvg.setAttribute("viewBox", "0 0 24 24");
+      iconSvg.innerHTML = MUSCLE_ICONS[muscle.id] || "";
+      icon.appendChild(iconSvg);
+
+      ringWrap.appendChild(ring);
+      ringWrap.appendChild(icon);
+
+      var count = document.createElement("span");
+      count.className = "muscle-count";
+      var big = document.createElement("span");
+      big.className = "muscle-count-current";
+      big.textContent = current;
+      var small = document.createElement("span");
+      small.className = "muscle-count-target";
+      small.textContent = "/" + WEEK_TARGET;
+      count.appendChild(big);
+      count.appendChild(small);
+
+      var label = document.createElement("span");
+      label.className = "muscle-label";
+      label.textContent = muscle.label;
+
+      tile.appendChild(ringWrap);
+      tile.appendChild(count);
+      tile.appendChild(label);
+
+      tile.addEventListener("click", function () { tapMuscle(muscle.id); });
+
+      grid.appendChild(tile);
+    });
+
+    var range = document.getElementById("training-range");
+    range.textContent =
+      WEEK_START.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) +
+      " → " +
+      WEEK_END.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  }
+
   function renderAll() {
     renderHabits();
     renderStreak();
     renderHistory();
+    renderTraining();
   }
 
   var addToggle = document.getElementById("add-toggle");

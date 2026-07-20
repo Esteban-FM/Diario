@@ -564,9 +564,139 @@ body {
 .legend-swatch.done { background: var(--primary-1); }
 .legend-swatch.none { background: transparent; border: 1px dashed var(--border); }
 
+/* ---------- Weekly training grid ---------- */
+
+.training { display: flex; flex-direction: column; gap: 12px; }
+
+.muscle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.muscle-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--g1) 22%, var(--surface)),
+    color-mix(in srgb, var(--g2) 14%, var(--surface)) 100%
+  );
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.5s ease;
+}
+
+.muscle-tile:focus-visible {
+  outline: 2px solid var(--primary-1);
+  outline-offset: 2px;
+}
+
+.muscle-tile.done {
+  background: linear-gradient(140deg, var(--g1), var(--g2));
+  border-color: transparent;
+}
+
+.muscle-ring-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+}
+
+.muscle-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from -90deg, var(--g1) 0deg, var(--g2) var(--ring, 0deg), var(--track) var(--ring, 0deg) 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  transition: background 0.5s ease;
+}
+
+.muscle-tile.done .muscle-ring {
+  background: conic-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85));
+}
+
+.muscle-icon {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--g1) 26%, var(--surface-2));
+  transition: background 0.4s ease;
+}
+
+.muscle-tile.done .muscle-icon {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.muscle-icon svg {
+  width: 19px;
+  height: 19px;
+  stroke: var(--g1);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.4s ease;
+}
+
+.muscle-icon svg .solid { fill: var(--g1); stroke: none; }
+
+.muscle-tile.done .muscle-icon svg,
+.muscle-tile.done .muscle-icon svg .solid { stroke: #ffffff; fill: #ffffff; }
+
+.muscle-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  font-family: ui-monospace, "SF Mono", "Space Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.muscle-count-current {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: color 0.35s ease;
+}
+
+.muscle-count-target {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  transition: color 0.35s ease;
+}
+
+.muscle-tile.done .muscle-count-current,
+.muscle-tile.done .muscle-count-target { color: #ffffff; }
+
+.muscle-label {
+  font-size: 11.5px;
+  font-weight: 650;
+  text-align: center;
+  letter-spacing: -0.005em;
+  transition: color 0.35s ease;
+}
+
+.muscle-tile.done .muscle-label { color: #ffffff; }
+
 @media (prefers-reduced-motion: reduce) {
   .habit-row, .habit-icon, .habit-icon svg, .habit-ring, .habit-meter-fill, .habit-mark, .habit-mark svg,
-  .habit-label, .habit-unit, .habit-value-current, .habit-value-target {
+  .habit-label, .habit-unit, .habit-value-current, .habit-value-target,
+  .muscle-tile, .muscle-ring, .muscle-icon, .muscle-icon svg, .muscle-count-current, .muscle-count-target, .muscle-label {
     transition: none !important;
   }
 }
