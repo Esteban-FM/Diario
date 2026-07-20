@@ -14,8 +14,19 @@
         <h1 class="date-heading" id="date-heading"></h1>
       </div>
       <div class="streak">
-        <span class="streak-value" id="streak-value">0</span>
-        <span class="streak-label" id="streak-label">días seguidos</span>
+        <svg class="streak-flame" viewBox="0 0 24 24" aria-hidden="true">
+          <defs>
+            <linearGradient id="flameGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" style="stop-color: var(--primary-1)" />
+              <stop offset="100%" style="stop-color: var(--primary-2)" />
+            </linearGradient>
+          </defs>
+          <path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-.5-1.8-1-2.5.7.3 3 1.8 3 5.5a5 5 0 0 1-10 0c0-4.5 3.5-6 5-11z" />
+        </svg>
+        <span class="streak-copy">
+          <span class="streak-value" id="streak-value">0</span>
+          <span class="streak-label" id="streak-label">días seguidos</span>
+        </span>
       </div>
     </header>
 
@@ -23,8 +34,11 @@
 
     <button class="add-toggle" id="add-toggle" type="button">+ Agregar meta</button>
     <form class="add-form" id="add-form">
-      <input type="text" name="label" placeholder="Nombre de la meta" autocomplete="off" required />
-      <input type="text" name="unit" placeholder="Detalle (opcional)" autocomplete="off" />
+      <div class="add-form-row">
+        <input type="text" name="label" placeholder="Nombre de la meta" autocomplete="off" required />
+        <input type="text" name="unit" placeholder="Detalle (opcional)" autocomplete="off" />
+      </div>
+      <div class="swatch-row" id="swatch-row" role="radiogroup" aria-label="Color de la meta"></div>
       <button type="submit">Añadir</button>
     </form>
 
