@@ -61,6 +61,10 @@
               if (def && def.unit) h.unit = def.unit;
             }
           });
+          var presentIds = parsed.habits.map(function (h) { return h.id; });
+          DEFAULT_HABITS.forEach(function (def) {
+            if (presentIds.indexOf(def.id) === -1) parsed.habits.push(Object.assign({}, def));
+          });
           return parsed;
         }
       }
@@ -176,7 +180,8 @@
     renderAll();
   }
 
-  function removeHabit(habitId) {
+  function removeHabit(habitId, label) {
+    if (!confirm('¿Eliminar "' + label + '" de tu lista de metas?')) return;
     state.habits = state.habits.filter(function (h) { return h.id !== habitId; });
     save();
     renderAll();
@@ -276,13 +281,13 @@
       remove.textContent = "×";
       remove.addEventListener("click", function (e) {
         e.stopPropagation();
-        removeHabit(habit.id);
+        removeHabit(habit.id, habit.label);
       });
       remove.addEventListener("keydown", function (e) {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          removeHabit(habit.id);
+          removeHabit(habit.id, habit.label);
         }
       });
       status.appendChild(remove);
