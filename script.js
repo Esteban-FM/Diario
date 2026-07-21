@@ -68,41 +68,80 @@
     trapecio: '<path d="M8 6h8l4 12H4z"/>'
   };
 
+  function normalizeState(parsed) {
+    parsed.habits.forEach(function (h, i) {
+      if (!h.color || !COLORS[h.color]) h.color = COLOR_KEYS[i % COLOR_KEYS.length];
+      var def = DEFAULT_BY_ID[h.id];
+      if (def && def.type === "progress") {
+        h.type = "progress";
+        h.target = def.target;
+        h.step = def.step;
+        h.unit = def.unit;
+      } else {
+        if (!h.type) h.type = "toggle";
+        if (def && def.unit) h.unit = def.unit;
+      }
+    });
+    var presentIds = parsed.habits.map(function (h) { return h.id; });
+    DEFAULT_HABITS.forEach(function (def) {
+      if (presentIds.indexOf(def.id) === -1) parsed.habits.push(Object.assign({}, def));
+    });
+    if (!parsed.training) parsed.training = {};
+    if (typeof parsed.updatedAt !== "number") parsed.updatedAt = 0;
+    return parsed;
+  }
+
   function loadState() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         var parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.habits) && parsed.completions) {
-          parsed.habits.forEach(function (h, i) {
-            if (!h.color || !COLORS[h.color]) h.color = COLOR_KEYS[i % COLOR_KEYS.length];
-            var def = DEFAULT_BY_ID[h.id];
-            if (def && def.type === "progress") {
-              h.type = "progress";
-              h.target = def.target;
-              h.step = def.step;
-              h.unit = def.unit;
-            } else {
-              if (!h.type) h.type = "toggle";
-              if (def && def.unit) h.unit = def.unit;
-            }
-          });
-          var presentIds = parsed.habits.map(function (h) { return h.id; });
-          DEFAULT_HABITS.forEach(function (def) {
-            if (presentIds.indexOf(def.id) === -1) parsed.habits.push(Object.assign({}, def));
-          });
-          if (!parsed.training) parsed.training = {};
-          return parsed;
+          return normalizeState(parsed);
         }
       }
     } catch (e) {}
-    return { habits: DEFAULT_HABITS.slice(), completions: {}, training: {} };
+    return { habits: DEFAULT_HABITS.slice(), completions: {}, training: {}, updatedAt: 0 };
   }
 
   var state = loadState();
 
+  var cloudUid = null;
+  var cloudUnsub = null;
+  var applyingRemote = false;
+
+  function setCloudStatus(text, connected) {
+    var bar = document.getElementById("cloud-bar");
+    var txt = document.getElementById("cloud-text");
+    if (!bar || !txt) return;
+    txt.textContent = text;
+    bar.classList.toggle("connected", !!connected);
+  }
+
+  function pushToCloud() {
+    if (!cloudUid || applyingRemote || !window.DosisCloud) return;
+    window.DosisCloud.pushRemote(cloudUid, state).catch(function (e) {
+      console.warn("No se pudo sincronizar con la nube", e);
+    });
+  }
+
+  function mergeRemote(remote) {
+    if (!remote || !Array.isArray(remote.habits) || !remote.completions) return;
+    if ((remote.updatedAt || 0) > (state.updatedAt || 0)) {
+      applyingRemote = true;
+      state = normalizeState(remote);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      renderAll();
+      applyingRemote = false;
+    } else if ((state.updatedAt || 0) > (remote.updatedAt || 0)) {
+      pushToCloud();
+    }
+  }
+
   function save() {
+    state.updatedAt = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    pushToCloud();
   }
 
   function todayKey(d) {
@@ -527,4 +566,44 @@
 
   renderHeader();
   renderAll();
+
+  if (window.DosisCloud) {
+    var cloudBar = document.getElementById("cloud-bar");
+    if (cloudBar) {
+      cloudBar.addEventListener("click", function () {
+        if (cloudUid) {
+          if (confirm("¿Cerrar sesión de sincronización en la nube? Tus datos siguen guardados en este dispositivo.")) {
+            window.DosisCloud.signOut();
+          }
+        } else {
+          setCloudStatus("Conectando con Google…", false);
+          window.DosisCloud.signIn();
+        }
+      });
+    }
+
+    window.DosisCloud.onAuthChange(function (user) {
+      if (cloudUnsub) {
+        cloudUnsub();
+        cloudUnsub = null;
+      }
+      if (user) {
+        cloudUid = user.uid;
+        setCloudStatus("Sincronizado como " + (user.email || user.displayName || "cuenta de Google"), true);
+        window.DosisCloud.fetchRemote(cloudUid).then(function (remote) {
+          if (remote) {
+            mergeRemote(remote);
+          } else {
+            pushToCloud();
+          }
+          cloudUnsub = window.DosisCloud.subscribe(cloudUid, mergeRemote);
+        });
+      } else {
+        cloudUid = null;
+        setCloudStatus("Sin sincronizar — tocá para conectar con Google", false);
+      }
+    });
+  } else {
+    setCloudStatus("Sincronización en la nube no disponible", false);
+  }
 })();

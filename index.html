@@ -30,6 +30,11 @@
       </div>
     </header>
 
+    <button class="cloud-bar" id="cloud-bar" type="button">
+      <span class="cloud-dot" id="cloud-dot" aria-hidden="true"></span>
+      <span id="cloud-text">Cargando estado de sincronización…</span>
+    </button>
+
     <section class="habits" id="habit-list" aria-label="Metas de hoy"></section>
 
     <button class="add-toggle" id="add-toggle" type="button">+ Agregar meta</button>
@@ -66,6 +71,10 @@
     </section>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script src="cloud-sync.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
