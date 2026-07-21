@@ -463,6 +463,7 @@ body {
 .add-form.open { display: flex; }
 
 .add-form-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.add-form-row[hidden] { display: none; }
 
 .add-form input {
   font: inherit;
@@ -476,6 +477,37 @@ body {
 .add-form input:focus-visible { outline: 2px solid var(--primary-1); outline-offset: 1px; }
 .add-form input[name="label"] { flex: 1 1 180px; min-width: 0; }
 .add-form input[name="unit"] { flex: 1 1 100px; min-width: 0; }
+.add-form input[name="target"],
+.add-form input[name="step"] { flex: 1 1 140px; min-width: 0; }
+
+.type-row { display: flex; gap: 8px; }
+
+.type-option {
+  flex: 1;
+  font: inherit;
+  font-weight: 650;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.type-option:focus-visible { outline: 2px solid var(--primary-1); outline-offset: 1px; }
+
+.type-option.selected {
+  color: #1a0f0a;
+  border-color: transparent;
+  background: linear-gradient(90deg, var(--primary-1), var(--primary-2));
+}
+
+.type-hint {
+  margin: -4px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
 
 .swatch-row { display: flex; gap: 10px; }
 

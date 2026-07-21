@@ -515,7 +515,37 @@
   var addToggle = document.getElementById("add-toggle");
   var addForm = document.getElementById("add-form");
   var swatchRow = document.getElementById("swatch-row");
+  var typeRow = document.getElementById("type-row");
+  var typeHint = document.getElementById("type-hint");
+  var unitInput = document.getElementById("unit-input");
+  var progressFields = document.getElementById("progress-fields");
   var selectedColor = COLOR_KEYS[state.habits.length % COLOR_KEYS.length];
+  var selectedType = "toggle";
+
+  var TYPE_HINTS = {
+    toggle: 'Se marca como cumplida o no, como "Tomar creatina".',
+    progress: 'Acumulás unidades a lo largo del día hasta llegar a una meta, como "Beber agua" o "Caminar mis pasos".'
+  };
+
+  function applyType() {
+    Array.prototype.forEach.call(typeRow.querySelectorAll(".type-option"), function (btn) {
+      var active = btn.getAttribute("data-type") === selectedType;
+      btn.classList.toggle("selected", active);
+      btn.setAttribute("aria-checked", String(active));
+    });
+    typeHint.textContent = TYPE_HINTS[selectedType];
+    progressFields.hidden = selectedType !== "progress";
+    unitInput.placeholder =
+      selectedType === "progress" ? "Unidad (ej. L, g, min, pasos)" : "Detalle (opcional, ej. dosis 5 g)";
+  }
+  applyType();
+
+  Array.prototype.forEach.call(typeRow.querySelectorAll(".type-option"), function (btn) {
+    btn.addEventListener("click", function () {
+      selectedType = btn.getAttribute("data-type");
+      applyType();
+    });
+  });
 
   function renderSwatches() {
     swatchRow.innerHTML = "";
@@ -544,21 +574,40 @@
   addForm.addEventListener("submit", function (e) {
     e.preventDefault();
     var labelInput = addForm.querySelector('input[name="label"]');
-    var unitInput = addForm.querySelector('input[name="unit"]');
     var label = labelInput.value.trim();
     if (!label) return;
-    var id = "h" + Date.now().toString(36);
-    state.habits.push({
-      id: id,
+
+    var habit = {
+      id: "h" + Date.now().toString(36),
       label: label,
-      unit: unitInput.value.trim(),
       color: selectedColor,
-      type: "toggle"
-    });
+      type: selectedType,
+      unit: unitInput.value.trim()
+    };
+
+    if (selectedType === "progress") {
+      var targetInput = addForm.querySelector('input[name="target"]');
+      var stepInput = addForm.querySelector('input[name="step"]');
+      var target = parseFloat(targetInput.value);
+      var step = parseFloat(stepInput.value);
+      if (!habit.unit || !(target > 0) || !(step > 0)) {
+        alert("Para una meta de progreso completá unidad, meta e incremento (mayores a 0).");
+        return;
+      }
+      habit.target = target;
+      habit.step = step;
+    }
+
+    state.habits.push(habit);
     save();
+
     labelInput.value = "";
     unitInput.value = "";
+    addForm.querySelector('input[name="target"]').value = "";
+    addForm.querySelector('input[name="step"]').value = "";
     addForm.classList.remove("open");
+    selectedType = "toggle";
+    applyType();
     selectedColor = COLOR_KEYS[state.habits.length % COLOR_KEYS.length];
     renderSwatches();
     renderAll();

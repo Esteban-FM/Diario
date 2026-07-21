@@ -41,8 +41,23 @@
     <form class="add-form" id="add-form">
       <div class="add-form-row">
         <input type="text" name="label" placeholder="Nombre de la meta" autocomplete="off" required />
-        <input type="text" name="unit" placeholder="Detalle (opcional)" autocomplete="off" />
       </div>
+
+      <div class="type-row" id="type-row" role="radiogroup" aria-label="Tipo de métrica">
+        <button type="button" class="type-option selected" data-type="toggle" role="radio" aria-checked="true">Simple</button>
+        <button type="button" class="type-option" data-type="progress" role="radio" aria-checked="false">Progreso</button>
+      </div>
+      <p class="type-hint" id="type-hint">Se marca como cumplida o no, como "Tomar creatina".</p>
+
+      <div class="add-form-row">
+        <input type="text" name="unit" id="unit-input" placeholder="Detalle (opcional, ej. dosis 5 g)" autocomplete="off" />
+      </div>
+
+      <div class="add-form-row" id="progress-fields" hidden>
+        <input type="number" name="target" placeholder="Meta diaria (ej. 8000)" min="1" step="any" inputmode="decimal" />
+        <input type="number" name="step" placeholder="Incremento (ej. 500)" min="1" step="any" inputmode="decimal" />
+      </div>
+
       <div class="swatch-row" id="swatch-row" role="radiogroup" aria-label="Color de la meta"></div>
       <button type="submit">Añadir</button>
     </form>
