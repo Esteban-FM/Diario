@@ -26,7 +26,7 @@
     },
     signIn: function () {
       var provider = new firebase.auth.GoogleAuthProvider();
-      return auth.signInWithRedirect(provider);
+      return auth.signInWithPopup(provider);
     },
     signOut: function () {
       return auth.signOut();

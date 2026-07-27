@@ -626,7 +626,14 @@
           }
         } else {
           setCloudStatus("Conectando con Google…", false);
-          window.DosisCloud.signIn();
+          window.DosisCloud.signIn().catch(function (e) {
+            if (e && e.code === "auth/popup-closed-by-user") {
+              setCloudStatus("Sin sincronizar — tocá para conectar con Google", false);
+            } else {
+              console.warn("No se pudo iniciar sesión", e);
+              setCloudStatus("No se pudo conectar — probá de nuevo", false);
+            }
+          });
         }
       });
     }
