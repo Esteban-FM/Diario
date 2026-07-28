@@ -35,6 +35,41 @@
       <span id="cloud-text">Cargando estado de sincronización…</span>
     </button>
 
+    <section class="nutrition" aria-label="Balance calórico y macros de hoy">
+      <div class="history-head">
+        <span class="history-title">Balance de hoy</span>
+        <button class="nutrition-edit" id="nutrition-edit" type="button">Editar</button>
+      </div>
+      <div class="nutrition-stats" id="nutrition-stats"></div>
+    </section>
+
+    <section class="sleepfast" aria-label="Ayuno y sueño">
+      <div class="history-head">
+        <span class="history-title">Ayuno y sueño</span>
+      </div>
+
+      <div class="sleepfast-stats" id="sleepfast-stats"></div>
+
+      <div class="time-grid">
+        <label class="time-row">
+          <span class="time-row-label">Última comida (hoy)</span>
+          <input type="time" id="time-lastMeal" />
+        </label>
+        <label class="time-row">
+          <span class="time-row-label">Rompiste el ayuno (hoy)</span>
+          <input type="time" id="time-breakFast" />
+        </label>
+        <label class="time-row">
+          <span class="time-row-label">Te fuiste a dormir (hoy)</span>
+          <input type="time" id="time-bedtime" />
+        </label>
+        <label class="time-row">
+          <span class="time-row-label">Te despertaste (hoy)</span>
+          <input type="time" id="time-wake" />
+        </label>
+      </div>
+    </section>
+
     <section class="habits" id="habit-list" aria-label="Metas de hoy"></section>
 
     <button class="add-toggle" id="add-toggle" type="button">+ Agregar meta</button>
@@ -84,6 +119,35 @@
       </div>
       <div class="muscle-grid" id="muscle-grid"></div>
     </section>
+  </div>
+
+  <div class="profile-overlay" id="profile-overlay" hidden>
+    <form class="profile-form" id="profile-form">
+      <h2>Tu perfil</h2>
+      <div class="add-form-row">
+        <input type="number" name="weight" placeholder="Peso (kg)" min="1" step="any" inputmode="decimal" required />
+        <input type="number" name="height" placeholder="Altura (cm)" min="1" step="any" inputmode="decimal" required />
+      </div>
+      <div class="add-form-row">
+        <input type="number" name="age" placeholder="Edad" min="1" step="1" inputmode="numeric" required />
+      </div>
+
+      <div class="type-row" id="sex-row" role="radiogroup" aria-label="Sexo biológico">
+        <button type="button" class="type-option selected" data-sex="m" role="radio" aria-checked="true">Hombre</button>
+        <button type="button" class="type-option" data-sex="f" role="radio" aria-checked="false">Mujer</button>
+      </div>
+
+      <div class="type-row" id="goal-row" role="radiogroup" aria-label="Objetivo">
+        <button type="button" class="type-option selected" data-goal="bajar" role="radio" aria-checked="true">Bajar grasa</button>
+        <button type="button" class="type-option" data-goal="subir" role="radio" aria-checked="false">Subir músculo</button>
+        <button type="button" class="type-option" data-goal="recomp" role="radio" aria-checked="false">Recomposición</button>
+      </div>
+
+      <div class="profile-actions">
+        <button type="submit">Guardar</button>
+        <button type="button" id="profile-cancel">Cancelar</button>
+      </div>
+    </form>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>

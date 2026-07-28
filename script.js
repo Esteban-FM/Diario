@@ -27,6 +27,9 @@
     pasos:
       '<g><ellipse cx="8.5" cy="7.5" rx="2.6" ry="3.4"/><circle cx="8.5" cy="12.6" r="1" class="solid"/>' +
       '<ellipse cx="15.5" cy="15.5" rx="2.6" ry="3.4" transform="rotate(180 15.5 15.5)"/><circle cx="15.5" cy="10.4" r="1" class="solid"/></g>',
+    correr:
+      '<g><path d="M4.5 16.8c0-1.9 1.1-3 2.9-3.6l5.8-2.3c1.3-.5 2.8-.4 4 .4l2.5 1.7c1.1.7 1.6 2.1 1.3 3.3-.3 1.2-1.4 2.1-2.7 2.1H6.8c-1.3 0-2.3-.7-2.3-1.6z"/>' +
+      '<line x1="8" y1="13.6" x2="10" y2="17"/></g>',
     default:
       '<g><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.6" class="solid"/></g>'
   };
@@ -36,13 +39,23 @@
     { id: "agua", label: "Beber agua", color: "indigo", type: "progress", target: 3, step: 1, unit: "L" },
     { id: "gimnasio", label: "Ir al gimnasio", color: "coral", type: "progress", target: 60, step: 15, unit: "min" },
     { id: "proteina", label: "Consumir proteína", color: "amber", type: "progress", target: 180, step: 15, unit: "g" },
-    { id: "pasos", label: "Caminar mis pasos", color: "teal", type: "progress", target: 8000, step: 500, unit: "pasos" }
+    { id: "pasos", label: "Caminar mis pasos", color: "teal", type: "progress", target: 8000, step: 500, unit: "pasos" },
+    { id: "correr", label: "Correr", color: "coral", type: "progress", target: 30, step: 10, unit: "min" }
   ];
 
   var DEFAULT_BY_ID = {};
   DEFAULT_HABITS.forEach(function (h) { DEFAULT_BY_ID[h.id] = h; });
 
   var WEEK_TARGET = 8;
+
+  // Estimación de gasto/macros: fórmulas estándar (Mifflin-St Jeor + MET), no IA.
+  var GYM_MET = 6; // pesas/entrenamiento de resistencia general
+  var RUN_MET = 9; // trote/carrera a ritmo moderado
+  var STEP_KCAL_PER_KG = 0.0005; // kcal por paso por kg de peso corporal
+  var ACTIVITY_FACTOR = 1.2; // línea base sedentaria; el ejercicio se suma aparte para no duplicar
+  var GOAL_CALORIE_ADJUST = { bajar: -400, subir: 300, recomp: 0 };
+  var GOAL_PROTEIN_PER_KG = { bajar: 2.2, subir: 2, recomp: 2 };
+  var FAT_PER_KG = 0.8;
 
   var MUSCLES = [
     { id: "pecho", label: "Pecho", color: "coral" },
@@ -87,7 +100,10 @@
       if (presentIds.indexOf(def.id) === -1) parsed.habits.push(Object.assign({}, def));
     });
     if (!parsed.training) parsed.training = {};
+    if (!parsed.sleep) parsed.sleep = {};
+    if (typeof parsed.profile === "undefined") parsed.profile = null;
     if (typeof parsed.updatedAt !== "number") parsed.updatedAt = 0;
+    applyProfileToHabits(parsed);
     return parsed;
   }
 
@@ -101,7 +117,7 @@
         }
       }
     } catch (e) {}
-    return { habits: DEFAULT_HABITS.slice(), completions: {}, training: {}, updatedAt: 0 };
+    return { habits: DEFAULT_HABITS.slice(), completions: {}, training: {}, sleep: {}, profile: null, updatedAt: 0 };
   }
 
   var state = loadState();
@@ -160,6 +176,7 @@
 
   var TODAY = new Date();
   var TODAY_KEY = todayKey(TODAY);
+  var YESTERDAY_KEY = todayKey(addDays(TODAY, -1));
 
   function mondayOf(date) {
     var day = date.getDay();
@@ -198,6 +215,53 @@
 
   function formatNumber(n) {
     return n.toLocaleString("es-ES");
+  }
+
+  function computeBMR(profile) {
+    var base = 10 * profile.weight + 6.25 * profile.height - 5 * profile.age;
+    return profile.sex === "f" ? base - 161 : base + 5;
+  }
+
+  function proteinTargetG(profile) {
+    var perKg = GOAL_PROTEIN_PER_KG[profile.goal] || 2;
+    return Math.round(perKg * profile.weight);
+  }
+
+  function fatTargetG(profile) {
+    return FAT_PER_KG * profile.weight;
+  }
+
+  function habitById(id) {
+    return state.habits.filter(function (h) { return h.id === id; })[0];
+  }
+
+  function exerciseKcalToday(profile, entry) {
+    var kcal = 0;
+    var gym = habitById("gimnasio");
+    if (gym) kcal += GYM_MET * profile.weight * (currentValue(gym, entry) / 60);
+    var steps = habitById("pasos");
+    if (steps) kcal += currentValue(steps, entry) * profile.weight * STEP_KCAL_PER_KG;
+    var running = habitById("correr");
+    if (running) kcal += RUN_MET * profile.weight * (currentValue(running, entry) / 60);
+    return kcal;
+  }
+
+  function dailyCalorieTarget(profile, exerciseKcal) {
+    var tdee = computeBMR(profile) * ACTIVITY_FACTOR + exerciseKcal;
+    var adjust = GOAL_CALORIE_ADJUST[profile.goal] || 0;
+    return Math.max(1200, tdee + adjust);
+  }
+
+  function carbsAvailableG(profile, calorieTarget) {
+    var proteinKcal = proteinTargetG(profile) * 4;
+    var fatKcal = fatTargetG(profile) * 9;
+    return Math.max(0, Math.round((calorieTarget - proteinKcal - fatKcal) / 4));
+  }
+
+  function applyProfileToHabits(s) {
+    if (!s.profile) return;
+    var protein = s.habits.filter(function (h) { return h.id === "proteina"; })[0];
+    if (protein) protein.target = proteinTargetG(s.profile);
   }
 
   var CHECK_SVG =
@@ -505,11 +569,137 @@
       WEEK_END.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   }
 
+  function renderNutrition() {
+    var stats = document.getElementById("nutrition-stats");
+    var editBtn = document.getElementById("nutrition-edit");
+    if (!stats || !editBtn) return;
+    stats.innerHTML = "";
+
+    if (!state.profile) {
+      editBtn.textContent = "Configurar";
+      var cta = document.createElement("button");
+      cta.type = "button";
+      cta.className = "nutrition-cta";
+      cta.textContent = "Completá tu perfil para ver calorías y macros de hoy";
+      cta.addEventListener("click", openProfileForm);
+      stats.appendChild(cta);
+      return;
+    }
+
+    editBtn.textContent = "Editar";
+    var entry = state.completions[TODAY_KEY] || {};
+    var exerciseKcal = exerciseKcalToday(state.profile, entry);
+    var calorieTarget = dailyCalorieTarget(state.profile, exerciseKcal);
+    var proteinTarget = proteinTargetG(state.profile);
+    var proteinHabit = habitById("proteina");
+    var proteinLogged = proteinHabit ? currentValue(proteinHabit, entry) : 0;
+    var proteinRemaining = Math.max(0, Math.round(proteinTarget - proteinLogged));
+    var carbsAvailable = carbsAvailableG(state.profile, calorieTarget);
+
+    var tiles = [
+      { icon: "🔥", value: formatNumber(Math.round(exerciseKcal)) + " kcal", label: "Quemadas hoy" },
+      { icon: "🥩", value: formatNumber(proteinRemaining) + " g", label: "Proteína restante" },
+      { icon: "🍚", value: formatNumber(carbsAvailable) + " g", label: "Carbos disponibles" }
+    ];
+
+    tiles.forEach(function (t) {
+      var tile = document.createElement("div");
+      tile.className = "nutrition-tile";
+      var icon = document.createElement("span");
+      icon.className = "nutrition-tile-icon";
+      icon.textContent = t.icon;
+      var value = document.createElement("span");
+      value.className = "nutrition-tile-value";
+      value.textContent = t.value;
+      var label = document.createElement("span");
+      label.className = "nutrition-tile-label";
+      label.textContent = t.label;
+      tile.appendChild(icon);
+      tile.appendChild(value);
+      tile.appendChild(label);
+      stats.appendChild(tile);
+    });
+  }
+
+  function minutesOfDay(hhmm) {
+    var parts = hhmm.split(":");
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  }
+
+  function crossMidnightMinutes(startHHMM, endHHMM) {
+    var start = minutesOfDay(startHHMM);
+    var end = minutesOfDay(endHHMM);
+    return (24 * 60 - start) + end;
+  }
+
+  function formatDuration(totalMinutes) {
+    var h = Math.floor(totalMinutes / 60);
+    var m = totalMinutes % 60;
+    return h + "h " + String(m).padStart(2, "0") + "m";
+  }
+
+  var TIME_FIELDS = ["lastMeal", "breakFast", "bedtime", "wake"];
+  var TIME_INPUTS = {
+    lastMeal: document.getElementById("time-lastMeal"),
+    breakFast: document.getElementById("time-breakFast"),
+    bedtime: document.getElementById("time-bedtime"),
+    wake: document.getElementById("time-wake")
+  };
+
+  function renderSleepFast() {
+    var stats = document.getElementById("sleepfast-stats");
+    if (!stats) return;
+    stats.innerHTML = "";
+
+    var yesterday = state.sleep[YESTERDAY_KEY] || {};
+    var today = state.sleep[TODAY_KEY] || {};
+
+    TIME_FIELDS.forEach(function (field) {
+      var input = TIME_INPUTS[field];
+      if (input) input.value = today[field] || "";
+    });
+
+    var fastingLabel = "—";
+    if (yesterday.lastMeal && today.breakFast) {
+      fastingLabel = formatDuration(crossMidnightMinutes(yesterday.lastMeal, today.breakFast));
+    }
+
+    var sleepLabel = "—";
+    if (yesterday.bedtime && today.wake) {
+      sleepLabel = formatDuration(crossMidnightMinutes(yesterday.bedtime, today.wake));
+    }
+
+    var tiles = [
+      { icon: "⏳", value: fastingLabel, label: "Horas de ayuno" },
+      { icon: "🌙", value: sleepLabel, label: "Horas de sueño" }
+    ];
+
+    tiles.forEach(function (t) {
+      var tile = document.createElement("div");
+      tile.className = "nutrition-tile";
+      var icon = document.createElement("span");
+      icon.className = "nutrition-tile-icon";
+      icon.textContent = t.icon;
+      var value = document.createElement("span");
+      value.className = "nutrition-tile-value";
+      value.textContent = t.value;
+      var label = document.createElement("span");
+      label.className = "nutrition-tile-label";
+      label.textContent = t.label;
+      tile.appendChild(icon);
+      tile.appendChild(value);
+      tile.appendChild(label);
+      stats.appendChild(tile);
+    });
+  }
+
   function renderAll() {
     renderHabits();
     renderStreak();
     renderHistory();
     renderTraining();
+    renderNutrition();
+    renderSleepFast();
   }
 
   var addToggle = document.getElementById("add-toggle");
@@ -610,6 +800,99 @@
     applyType();
     selectedColor = COLOR_KEYS[state.habits.length % COLOR_KEYS.length];
     renderSwatches();
+    renderAll();
+  });
+
+  TIME_FIELDS.forEach(function (field) {
+    var input = TIME_INPUTS[field];
+    if (!input) return;
+    input.addEventListener("change", function () {
+      var entry = state.sleep[TODAY_KEY] || {};
+      if (input.value) {
+        entry[field] = input.value;
+      } else {
+        delete entry[field];
+      }
+      state.sleep[TODAY_KEY] = entry;
+      save();
+      renderSleepFast();
+    });
+  });
+
+  var profileOverlay = document.getElementById("profile-overlay");
+  var profileForm = document.getElementById("profile-form");
+  var profileSexRow = document.getElementById("sex-row");
+  var profileGoalRow = document.getElementById("goal-row");
+  var profileCancel = document.getElementById("profile-cancel");
+  var nutritionEdit = document.getElementById("nutrition-edit");
+  var selectedSex = "m";
+  var selectedGoal = "bajar";
+
+  function applySexSelection() {
+    Array.prototype.forEach.call(profileSexRow.querySelectorAll(".type-option"), function (btn) {
+      var active = btn.getAttribute("data-sex") === selectedSex;
+      btn.classList.toggle("selected", active);
+      btn.setAttribute("aria-checked", String(active));
+    });
+  }
+
+  function applyGoalSelection() {
+    Array.prototype.forEach.call(profileGoalRow.querySelectorAll(".type-option"), function (btn) {
+      var active = btn.getAttribute("data-goal") === selectedGoal;
+      btn.classList.toggle("selected", active);
+      btn.setAttribute("aria-checked", String(active));
+    });
+  }
+
+  Array.prototype.forEach.call(profileSexRow.querySelectorAll(".type-option"), function (btn) {
+    btn.addEventListener("click", function () {
+      selectedSex = btn.getAttribute("data-sex");
+      applySexSelection();
+    });
+  });
+
+  Array.prototype.forEach.call(profileGoalRow.querySelectorAll(".type-option"), function (btn) {
+    btn.addEventListener("click", function () {
+      selectedGoal = btn.getAttribute("data-goal");
+      applyGoalSelection();
+    });
+  });
+
+  function openProfileForm() {
+    var p = state.profile;
+    profileForm.querySelector('input[name="weight"]').value = p ? p.weight : "";
+    profileForm.querySelector('input[name="height"]').value = p ? p.height : "";
+    profileForm.querySelector('input[name="age"]').value = p ? p.age : "";
+    selectedSex = p ? p.sex : "m";
+    selectedGoal = p ? p.goal : "bajar";
+    applySexSelection();
+    applyGoalSelection();
+    profileOverlay.hidden = false;
+  }
+
+  function closeProfileForm() {
+    profileOverlay.hidden = true;
+  }
+
+  nutritionEdit.addEventListener("click", openProfileForm);
+  profileCancel.addEventListener("click", closeProfileForm);
+  profileOverlay.addEventListener("click", function (e) {
+    if (e.target === profileOverlay) closeProfileForm();
+  });
+
+  profileForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var weight = parseFloat(profileForm.querySelector('input[name="weight"]').value);
+    var height = parseFloat(profileForm.querySelector('input[name="height"]').value);
+    var age = parseInt(profileForm.querySelector('input[name="age"]').value, 10);
+    if (!(weight > 0) || !(height > 0) || !(age > 0)) {
+      alert("Completá peso, altura y edad con valores válidos.");
+      return;
+    }
+    state.profile = { weight: weight, height: height, age: age, sex: selectedSex, goal: selectedGoal };
+    applyProfileToHabits(state);
+    save();
+    closeProfileForm();
     renderAll();
   });
 
