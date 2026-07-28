@@ -646,13 +646,19 @@
     return h + "h " + String(m).padStart(2, "0") + "m";
   }
 
+  // lastMeal/bedtime son eventos de la noche de ayer; breakFast/wake son de esta mañana.
   var TIME_FIELDS = ["lastMeal", "breakFast", "bedtime", "wake"];
+  var TIME_FIELD_DAY = { lastMeal: "yesterday", breakFast: "today", bedtime: "yesterday", wake: "today" };
   var TIME_INPUTS = {
     lastMeal: document.getElementById("time-lastMeal"),
     breakFast: document.getElementById("time-breakFast"),
     bedtime: document.getElementById("time-bedtime"),
     wake: document.getElementById("time-wake")
   };
+
+  function sleepDateKeyFor(field) {
+    return TIME_FIELD_DAY[field] === "yesterday" ? YESTERDAY_KEY : TODAY_KEY;
+  }
 
   function renderSleepFast() {
     var stats = document.getElementById("sleepfast-stats");
@@ -664,7 +670,8 @@
 
     TIME_FIELDS.forEach(function (field) {
       var input = TIME_INPUTS[field];
-      if (input) input.value = today[field] || "";
+      var entry = state.sleep[sleepDateKeyFor(field)] || {};
+      if (input) input.value = entry[field] || "";
     });
 
     var fastingLabel = "—";
@@ -829,13 +836,14 @@
     var input = TIME_INPUTS[field];
     if (!input) return;
     input.addEventListener("change", function () {
-      var entry = state.sleep[TODAY_KEY] || {};
+      var dateKey = sleepDateKeyFor(field);
+      var entry = state.sleep[dateKey] || {};
       if (input.value) {
         entry[field] = input.value;
       } else {
         delete entry[field];
       }
-      state.sleep[TODAY_KEY] = entry;
+      state.sleep[dateKey] = entry;
       save();
       renderSleepFast();
     });
