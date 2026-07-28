@@ -101,6 +101,7 @@
     });
     if (!parsed.training) parsed.training = {};
     if (!parsed.sleep) parsed.sleep = {};
+    if (!parsed.intake) parsed.intake = {};
     if (typeof parsed.profile === "undefined") parsed.profile = null;
     if (typeof parsed.updatedAt !== "number") parsed.updatedAt = 0;
     applyProfileToHabits(parsed);
@@ -117,7 +118,7 @@
         }
       }
     } catch (e) {}
-    return { habits: DEFAULT_HABITS.slice(), completions: {}, training: {}, sleep: {}, profile: null, updatedAt: 0 };
+    return { habits: DEFAULT_HABITS.slice(), completions: {}, training: {}, sleep: {}, intake: {}, profile: null, updatedAt: 0 };
   }
 
   var state = loadState();
@@ -575,6 +576,9 @@
     if (!stats || !editBtn) return;
     stats.innerHTML = "";
 
+    var consumedInput = document.getElementById("input-consumed");
+    if (consumedInput) consumedInput.value = state.intake[TODAY_KEY] || "";
+
     if (!state.profile) {
       editBtn.textContent = "Configurar";
       var cta = document.createElement("button");
@@ -595,9 +599,13 @@
     var proteinLogged = proteinHabit ? currentValue(proteinHabit, entry) : 0;
     var proteinRemaining = Math.max(0, Math.round(proteinTarget - proteinLogged));
     var carbsAvailable = carbsAvailableG(state.profile, calorieTarget);
+    var consumed = state.intake[TODAY_KEY] || 0;
+    var balance = Math.round(calorieTarget - consumed);
+    var balanceValue = (balance >= 0 ? "+" : "") + formatNumber(balance) + " kcal";
 
     var tiles = [
       { icon: "🔥", value: formatNumber(Math.round(exerciseKcal)) + " kcal", label: "Quemadas hoy" },
+      { icon: "⚖️", value: balanceValue, label: balance >= 0 ? "Te faltan" : "Excediste" },
       { icon: "🥩", value: formatNumber(proteinRemaining) + " g", label: "Proteína restante" },
       { icon: "🍚", value: formatNumber(carbsAvailable) + " g", label: "Carbos disponibles" }
     ];
@@ -802,6 +810,20 @@
     renderSwatches();
     renderAll();
   });
+
+  var consumedInputEl = document.getElementById("input-consumed");
+  if (consumedInputEl) {
+    consumedInputEl.addEventListener("change", function () {
+      var value = parseFloat(consumedInputEl.value);
+      if (value > 0) {
+        state.intake[TODAY_KEY] = value;
+      } else {
+        delete state.intake[TODAY_KEY];
+      }
+      save();
+      renderNutrition();
+    });
+  }
 
   TIME_FIELDS.forEach(function (field) {
     var input = TIME_INPUTS[field];
